@@ -9,7 +9,6 @@ function HeroSection() {
       {/* Decorative background glow & gradient vertical lines */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         <div className="absolute top-1/4 left-1/2 -z-10 h-96 w-[600px] -translate-x-1/2 rounded-full bg-cyan-200/30 blur-3xl" />
-        <div className="absolute bottom-20 left-[8%] h-64 w-px bg-gradient-to-b from-transparent via-cyan-400/40 to-transparent md:left-[12%] md:h-96" />
         <div className="absolute right-[15%] bottom-0 h-48 w-px bg-gradient-to-b from-transparent via-purple-300/30 to-transparent md:right-[20%] md:h-72" />
       </div>
 
