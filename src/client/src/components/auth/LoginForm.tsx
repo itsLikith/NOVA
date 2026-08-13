@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -17,12 +18,12 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
       <form>
         <FieldGroup>
           <div className="flex flex-col items-center gap-2 text-center">
-            <a href="#" className="flex flex-col items-center gap-2 font-medium">
+            <Link href="/" className="flex flex-col items-center gap-2 font-medium">
               <div className="flex items-center justify-center rounded-md">
                 <Image src="/logo.png" alt="Nova Logo" width={50} height={50} />
               </div>
               <span className="sr-only">Nova.</span>
-            </a>
+            </Link>
             <h1 className="text-xl font-bold">Welcome to Nova.</h1>
           </div>
           <Field>
@@ -38,7 +39,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
           </Field>
           <FieldSeparator>Or</FieldSeparator>
           <Field className="grid">
-            <Button variant="outline" className="disabled :cursor-not-allowed disabled:opacity-50">
+            <Button variant="outline" disabled>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 100 100"
