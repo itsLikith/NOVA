@@ -18,14 +18,9 @@ func Load() Config {
 	if err != nil {
 		logger.Info("Error loading environment variables; using default variables")
 	}
-
-	port := getenv("PORT", "8080")
-
-	authServiceURL := getenv("AUTH_SERVICE_URL", "http://localhost:8081")
-
 	return Config{
-		Port:           port,
-		AuthServiceURL: authServiceURL,
+		Port:           getenv("PORT", "8080"),
+		AuthServiceURL: getenv("AUTH_SERVICE_URL", "http://localhost:8081"),
 	}
 }
 

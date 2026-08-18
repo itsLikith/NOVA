@@ -17,6 +17,7 @@ func main() {
 	api := app.Group("/api/v1")
 
 	routes.HealthRoutes(api)
+	routes.AuthRoutes(api, cfg)
 
 	log.Fatal(app.Listen(":" + cfg.Port))
 }
