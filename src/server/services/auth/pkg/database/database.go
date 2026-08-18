@@ -2,45 +2,53 @@ package database
 
 import (
 	"fmt"
-
 	"github.com/nova/auth/config"
+	"github.com/nova/auth/internal/models"
+	"github.com/nova/pkg/logger"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
-type Database struct {
-	*gorm.DB
+func Connect(cfg *config.Config) (*gorm.DB, error) {
+	dsn := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		cfg.DatabaseHost,
+		cfg.DatabasePort,
+		cfg.DatabaseUser,
+		cfg.DatabasePassword,
+		cfg.DatabaseName,
+		cfg.DatabaseSSLMode,
+	)
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: gormlogger.Default.LogMode(gormlogger.Silent),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sql database: %w", err)
+	}
+
+	if err := sqlDB.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	logger.Info("Connected to PostgreSQL")
+
+	return db, nil
 }
 
-func Connect(cfg *config.Config) (*Database, error) {
-	if err := ensureDatabaseExists(cfg); err != nil {
-		return nil, err
+func Migrate(db *gorm.DB) error {
+	if err := db.AutoMigrate(&models.User{}); err != nil {
+		return fmt.Errorf("failed to migrate database: %w", err)
 	}
 
-	db, err := gorm.Open(postgres.Open(cfg.DSN()), &gorm.Config{})
-	if err != nil {
-		return nil, err
-	}
-
-	return &Database{DB: db}, nil
-}
-
-func ensureDatabaseExists(cfg *config.Config) error {
-	adminDB, err := gorm.Open(postgres.Open(cfg.SystemDSN()), &gorm.Config{})
-	if err != nil {
-		return err
-	}
-
-	var exists bool
-	if err := adminDB.Raw("SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = ?)", cfg.DBName).Scan(&exists).Error; err != nil {
-		return err
-	}
-
-	if !exists {
-		if err := adminDB.Exec(fmt.Sprintf("CREATE DATABASE %q", cfg.DBName)).Error; err != nil {
-			return err
-		}
-	}
+	logger.Info("Database migration completed")
 
 	return nil
 }

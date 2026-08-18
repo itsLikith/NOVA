@@ -6,16 +6,16 @@ COPY go.work go.work.sum ./
 COPY pkg ./pkg
 COPY services ./services
 
-WORKDIR /workspace/services/gateway
-RUN go build -o /out/gateway ./cmd/server
+WORKDIR /workspace/services/auth
+RUN go build -o /out/auth ./cmd/server
 
 FROM alpine:3.22
 
 RUN addgroup -S nova && adduser -S nova -G nova
 
-COPY --from=builder /out/gateway /usr/local/bin/gateway
+COPY --from=builder /out/auth /usr/local/bin/auth
 
 USER nova
-EXPOSE 8080
+EXPOSE 8081
 
-CMD ["gateway"]
+CMD ["auth"]

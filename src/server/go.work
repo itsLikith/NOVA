@@ -3,4 +3,5 @@ go 1.26.6
 use (
 	./pkg
 	./services/gateway
+	./services/auth
 )

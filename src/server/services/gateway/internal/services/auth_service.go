@@ -6,39 +6,35 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/proxy"
 
+	"github.com/nova/pkg/logger"
 	"github.com/nova/pkg/response"
 )
 
 type AuthService struct {
-	upstreamURL string
+	forward fiber.Handler
 }
 
 func NewAuthService(upstreamURL string) *AuthService {
+	policy := proxy.DefaultSecurityPolicy()
+	// The target is a static, service-owned Compose/internal URL rather than
+	// user input, so private network addresses are required and safe here.
+	policy.AllowPrivateIPs = true
+
 	return &AuthService{
-		upstreamURL: strings.TrimRight(upstreamURL, "/"),
+		forward: proxy.Balancer(proxy.Config{
+			Servers:        []string{strings.TrimRight(upstreamURL, "/")},
+			SecurityPolicy: &policy,
+		}),
 	}
 }
 
 func (s *AuthService) Forward(c fiber.Ctx) error {
-
-	// /api/v1/auth/login
-	originalURL := c.OriginalURL()
-
-	// Remove gateway prefix
-	path := strings.TrimPrefix(
-		originalURL,
-		"/api/v1/auth",
-	)
-
-	// Auth service receives:
-	// /login
-	targetURL := s.upstreamURL + path
-
-	if err := proxy.Do(c, targetURL); err != nil {
+	if err := s.forward(c); err != nil {
+		logger.Error("Auth upstream request failed: " + err.Error())
 		return c.Status(fiber.StatusBadGateway).JSON(
 			response.SendErrorResponse(
-				404,
-				"Auth service unavailabe",
+				fiber.StatusBadGateway,
+				"auth service unavailable",
 				err.Error(),
 			),
 		)

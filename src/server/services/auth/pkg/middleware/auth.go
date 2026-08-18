@@ -1,55 +1,85 @@
 package middleware
 
 import (
-	"errors"
+	"strings"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/nova/auth/internal/service"
-	"github.com/nova/auth/pkg/response"
+	"github.com/nova/auth/config"
+	"github.com/nova/auth/internal/models"
+	"github.com/nova/auth/pkg/utils"
+
+	"github.com/gofiber/fiber/v3"
 )
 
-func AuthRequired(secret string) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		if err := setClaims(c, secret); err != nil {
-			return err
+const (
+	UserIDKey = "userID"
+	RoleKey   = "role"
+)
+
+func JWTAuth(cfg *config.Config) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		header := c.Get("Authorization")
+
+		if strings.TrimSpace(header) == "" {
+			return fiber.NewError(
+				fiber.StatusUnauthorized,
+				"authentication required",
+			)
 		}
+
+		tokenString, err := utils.ExtractBearerToken(header)
+		if err != nil {
+			return fiber.NewError(
+				fiber.StatusUnauthorized,
+				"invalid authorization header",
+			)
+		}
+
+		claims, err := utils.ParseToken(
+			tokenString,
+			cfg.JWTSecret,
+			cfg.JWTIssuer,
+		)
+
+		if err != nil {
+			return fiber.NewError(
+				fiber.StatusUnauthorized,
+				"invalid or expired token",
+			)
+		}
+
+		if claims.Subject == "" {
+			return fiber.NewError(
+				fiber.StatusUnauthorized,
+				"invalid token claims",
+			)
+		}
+
+		if claims.Role != models.RoleAdmin &&
+			claims.Role != models.RoleUser {
+			return fiber.NewError(
+				fiber.StatusUnauthorized,
+				"invalid token role",
+			)
+		}
+
+		c.Locals(UserIDKey, claims.Subject)
+		c.Locals(RoleKey, claims.Role)
+
 		return c.Next()
 	}
 }
 
-func AdminRequired(secret string) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		if err := setClaims(c, secret); err != nil {
-			return err
-		}
+func RequireAdmin() fiber.Handler {
+	return func(c fiber.Ctx) error {
+		role, ok := c.Locals(RoleKey).(string)
 
-		claims, ok := c.Locals("user").(*service.Claims)
-		if !ok {
-			return response.ErrorMessage(c, fiber.StatusUnauthorized, "authentication required", "user not found in token")
-		}
-		if claims.Role != "admin" {
-			return response.ErrorMessage(c, fiber.StatusForbidden, "access denied", "admin access required")
+		if !ok || role != models.RoleAdmin {
+			return fiber.NewError(
+				fiber.StatusForbidden,
+				"admin privileges required",
+			)
 		}
 
 		return c.Next()
 	}
-}
-
-func setClaims(c *fiber.Ctx, secret string) error {
-	tokenString, err := service.ExtractBearerToken(c.Get("Authorization"))
-	if err != nil {
-		message := "invalid token"
-		if errors.Is(err, service.ErrMissingToken) {
-			message = "missing authorization header"
-		}
-		return response.ErrorMessage(c, fiber.StatusUnauthorized, "authentication required", message)
-	}
-
-	claims, err := service.ValidateJWT(secret, tokenString)
-	if err != nil {
-		return response.ErrorMessage(c, fiber.StatusUnauthorized, "authentication required", "invalid token")
-	}
-
-	c.Locals("user", claims)
-	return nil
 }

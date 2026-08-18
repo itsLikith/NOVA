@@ -1,42 +1,88 @@
 package main
 
 import (
-	"log"
+	"context"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/nova/auth/config"
-	"github.com/nova/auth/internal/handler"
-	"github.com/nova/auth/internal/model"
+	"github.com/nova/auth/internal/handlers"
 	"github.com/nova/auth/internal/repository"
-	"github.com/nova/auth/internal/service"
+	"github.com/nova/auth/internal/routes"
+	"github.com/nova/auth/internal/services"
 	"github.com/nova/auth/pkg/database"
+	"github.com/nova/pkg/logger"
+	"github.com/nova/pkg/response"
+
+	"github.com/gofiber/fiber/v3"
+	recoverer "github.com/gofiber/fiber/v3/middleware/recover"
 )
 
 func main() {
-	cfg := config.New()
-	if err := cfg.Validate(); err != nil {
-		log.Fatal(err)
+	cfg, err := config.Load()
+	if err != nil {
+		logger.Fatal("Configuration error: " + err.Error())
 	}
 
 	db, err := database.Connect(cfg)
 	if err != nil {
-		log.Fatal("database connection failed: ", err)
+		logger.Fatal("Database error: " + err.Error())
 	}
 
-	if err := db.AutoMigrate(&model.User{}); err != nil {
-		log.Fatal("database migration failed: ", err)
+	if err := database.Migrate(db); err != nil {
+		logger.Fatal("Migration error: " + err.Error())
 	}
 
-	repo := repository.NewPostgreSQLRepository(db)
-	authService := service.NewService(repo, cfg.JWTSecret, cfg.AdminUsername, cfg.AdminPassword)
+	authRepository := repository.NewAuthRepository(db)
 
-	if err := authService.SeedAdmin(); err != nil {
-		log.Fatal("admin seed failed: ", err)
+	authService := services.NewAuthService(
+		authRepository,
+		cfg,
+	)
+
+	if err := authService.EnsureAdmin(context.Background()); err != nil {
+		logger.Fatal("Admin bootstrap error: " + err.Error())
 	}
 
-	app := fiber.New()
-	h := handler.NewHandler(authService, cfg.JWTSecret)
-	h.RegisterRoutes(app)
+	healthService := services.NewHealthService(db)
 
-	log.Fatal(app.Listen(":" + cfg.AppPort))
+	authHandler := handlers.NewAuthHandler(
+		authService,
+	)
+
+	healthHandler := handlers.NewHealthHandler(
+		healthService,
+	)
+
+	app := fiber.New(fiber.Config{
+		ErrorHandler: func(c fiber.Ctx, err error) error {
+			status := fiber.StatusInternalServerError
+			message := "internal server error"
+
+			if fiberErr, ok := err.(*fiber.Error); ok {
+				status = fiberErr.Code
+				message = fiberErr.Message
+			}
+
+			logger.Warn("Request failed: " + err.Error())
+			return c.Status(status).JSON(response.SendErrorResponse(status, message, nil))
+		},
+	})
+
+	app.Use(recoverer.New())
+
+	routes.RegisterAuthRoutes(
+		app,
+		authHandler,
+		cfg,
+	)
+
+	routes.RegisterHealthRoutes(
+		app,
+		healthHandler,
+	)
+
+	logger.Info("Auth service starting on port " + cfg.AppPort)
+
+	if err := app.Listen(":" + cfg.AppPort); err != nil {
+		logger.Fatal("Server error: " + err.Error())
+	}
 }
