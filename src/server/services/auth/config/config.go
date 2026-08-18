@@ -1,70 +1,42 @@
 package config
 
 import (
-	"fmt"
 	"os"
-	"strings"
 
 	"github.com/joho/godotenv"
+	"github.com/nova/pkg/logger"
 )
 
 type Config struct {
-	DBHost        string
-	DBPort        string
-	DBUser        string
-	DBPassword    string
-	DBName        string
-	AppPort       string
-	JWTSecret     string
-	AdminUsername string
-	AdminPassword string
+	Port string
+
+	DBHost     string
+	DBPort     string
+	DBUser     string
+	DBPassword string
+	DBName     string
 }
 
-func New() *Config {
-	godotenv.Load()
-	return &Config{
-		DBHost:        os.Getenv("DB_HOST"),
-		DBPort:        os.Getenv("DB_PORT"),
-		DBUser:        os.Getenv("DB_USER"),
-		DBPassword:    os.Getenv("DB_PASSWORD"),
-		DBName:        os.Getenv("DB_NAME"),
-		AppPort:       os.Getenv("APP_PORT"),
-		JWTSecret:     os.Getenv("JWT_SECRET"),
-		AdminUsername: os.Getenv("ADMIN_USERNAME"),
-		AdminPassword: os.Getenv("ADMIN_PASSWORD"),
+func Load() Config {
+	err := godotenv.Load()
+	if err != nil {
+		logger.Info("Error loading environment variables; using default variables")
+	}
+	return Config{
+		Port: getenv("PORT", "8081"),
+
+		DBHost:     getenv("DB_HOST", "localhost"),
+		DBPort:     getenv("DB_PORT", "5432"),
+		DBUser:     getenv("DB_USER", "postgres"),
+		DBPassword: getenv("DB_PASSWORD", "postgres"),
+		DBName:     getenv("DB_NAME", "auth"),
 	}
 }
 
-func (c *Config) Validate() error {
-	if strings.TrimSpace(c.AdminUsername) == "" {
-		return fmt.Errorf("ADMIN_USERNAME is required")
+func getenv(key, fallback string) string {
+	value, exists := os.LookupEnv(key)
+	if !exists {
+		return fallback
 	}
-	if strings.TrimSpace(c.AdminPassword) == "" {
-		return fmt.Errorf("ADMIN_PASSWORD is required")
-	}
-	if strings.TrimSpace(c.JWTSecret) == "" {
-		return fmt.Errorf("JWT_SECRET is required")
-	}
-	return nil
-}
-
-func (c *Config) DSN() string {
-	return fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
-		c.DBHost,
-		c.DBUser,
-		c.DBPassword,
-		c.DBName,
-		c.DBPort,
-	)
-}
-
-func (c *Config) SystemDSN() string {
-	return fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=postgres port=%s sslmode=disable TimeZone=UTC",
-		c.DBHost,
-		c.DBUser,
-		c.DBPassword,
-		c.DBPort,
-	)
+	return value
 }
