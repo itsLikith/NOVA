@@ -17,8 +17,8 @@ import { Separator } from '@/components/ui/separator';
 import { ChevronRight, Menu } from 'lucide-react';
 
 const NAV_LINKS = [
-  { label: 'About', href: '#about' },
-  { label: 'FAQs', href: '#faq' },
+  { label: 'About', href: '/#about' },
+  { label: 'FAQs', href: '/#faq' },
   { label: 'Docs', href: '/docs' },
 ] as const;
 
@@ -26,17 +26,17 @@ const FEATURE_ITEMS = [
   {
     title: 'Real-Time Sync',
     description: 'Sub-millisecond state updates & live cursor tracking for seamless collaboration.',
-    href: '#features',
+    href: '/#features',
   },
   {
     title: 'Infinite Workspace',
     description: 'Shapes, sticky notes, connectors, and diagrams tailored for team planning.',
-    href: '#features',
+    href: '/#features',
   },
   {
     title: 'Internal & Secure',
     description: 'Enterprise SSO, role-based access control, and end-to-end office data privacy.',
-    href: '#features',
+    href: '/#features',
   },
 ] as const;
 
@@ -122,7 +122,7 @@ function NavBar() {
 
             <div className="mx-4 mb-6 flex flex-col rounded-xl border border-border/60 bg-background">
               <Link
-                href="#features"
+                href="/#features"
                 className="flex items-center justify-between px-5 py-4 text-base font-medium text-foreground transition-colors hover:bg-muted/50"
               >
                 Features
