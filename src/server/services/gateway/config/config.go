@@ -16,7 +16,7 @@ type Config struct {
 func Load() Config {
 	err := godotenv.Load()
 	if err != nil {
-		logger.Info("Error loading environment variables; using default variables")
+		logger.Warn("No .env file found; using environment variables and defaults")
 	}
 	return Config{
 		Port:           getenv("PORT", "8080"),

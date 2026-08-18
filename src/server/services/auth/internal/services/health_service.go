@@ -1,13 +1,30 @@
 package services
 
 import (
-	"github.com/nova/pkg/response"
+	"context"
+
+	"gorm.io/gorm"
 )
 
-func HealthStatus() response.SuccessResponse {
-	return response.SuccessResponse{
-		Status:  200,
-		Message: "Auth service is UP",
-		Data:    nil,
+type HealthService interface {
+	Check(ctx context.Context) error
+}
+
+type healthService struct {
+	db *gorm.DB
+}
+
+func NewHealthService(db *gorm.DB) HealthService {
+	return &healthService{
+		db: db,
 	}
+}
+
+func (s *healthService) Check(ctx context.Context) error {
+	sqlDB, err := s.db.DB()
+	if err != nil {
+		return err
+	}
+
+	return sqlDB.PingContext(ctx)
 }

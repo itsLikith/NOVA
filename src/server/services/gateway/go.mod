@@ -3,6 +3,7 @@ module github.com/nova/gateway
 go 1.26.6
 
 require (
+	github.com/nova/pkg v0.0.0
 	github.com/andybalholm/brotli v1.2.2 // indirect
 	github.com/gofiber/fiber/v3 v3.5.0 // indirect
 	github.com/gofiber/schema v1.8.4 // indirect
@@ -21,3 +22,5 @@ require (
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 )
+
+replace github.com/nova/pkg => ../../pkg

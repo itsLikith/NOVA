@@ -1,10 +1,14 @@
 package routes
 
 import (
-	"github.com/gofiber/fiber/v3"
 	"github.com/nova/auth/internal/handlers"
+
+	"github.com/gofiber/fiber/v3"
 )
 
-func HealthRoutes(router fiber.Router) {
-	router.Get("/health", handlers.HealthCheck)
+func RegisterHealthRoutes(
+	app *fiber.App,
+	handler *handlers.HealthHandler,
+) {
+	app.Get("/api/v1/auth/health", handler.Health)
 }
