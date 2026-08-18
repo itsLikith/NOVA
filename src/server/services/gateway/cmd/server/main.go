@@ -3,28 +3,20 @@ package main
 import (
 	"log"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v3"
 
-	"github.com/nova/gateway/internal/config"
-	"github.com/nova/gateway/internal/proxy"
-	"github.com/nova/gateway/internal/handlers"
+	"github.com/nova/gateway/config"
+	"github.com/nova/gateway/internal/routes"
 )
 
 func main() {
 	cfg := config.Load()
 
 	app := fiber.New()
-	app.Use(logger.New())
 
-	app.Get("/api/v1/health", handlers.Health)
+	api := app.Group("/api/v1")
 
-	app.All(
-		"/api/v1/auth/*",
-		proxy.Forward(cfg.AuthServiceURL),
-	)
+	routes.HealthRoutes(api)
 
-	log.Fatal(
-		app.Listen(":" + cfg.Port),
-	)
+	log.Fatal(app.Listen(":" + cfg.Port))
 }

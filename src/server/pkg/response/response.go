@@ -1,15 +1,29 @@
 package response
 
-type Response struct {
-	Message string      `json:"message"`
-	Data    any `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+type SuccessResponse struct {
+	Status int
+	Message string
+	Data any
 }
 
-func NewResponse(message string, data any, err string) *Response {
-	return &Response{
+type ErrorResponse struct {
+	Status int
+	Message string
+	Error any
+}
+
+func SendSuccessResponse(status int, message string, data any) SuccessResponse {
+	return SuccessResponse{
+		Status: status,
 		Message: message,
-		Data:    data,
-		Error:   err,
+		Data: data,
+	}
+}
+
+func SendErrorResponse(status int, message string, error any) ErrorResponse {
+	return ErrorResponse{
+		Status: status,
+		Message: message,
+		Error: error,
 	}
 }
