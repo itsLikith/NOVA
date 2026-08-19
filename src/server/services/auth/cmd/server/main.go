@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 
 	"github.com/nova/auth/config"
 	"github.com/nova/auth/internal/handlers"
@@ -46,6 +47,7 @@ func main() {
 
 	authHandler := handlers.NewAuthHandler(
 		authService,
+		cfg,
 	)
 
 	healthHandler := handlers.NewHealthHandler(
@@ -68,6 +70,24 @@ func main() {
 	})
 
 	app.Use(recoverer.New())
+
+	// Allow only the gateway origin to receive/set cookies when calling auth endpoints.
+	// Set GATEWAY_URL env var (e.g. http://localhost:8080). Defaults to http://localhost:8080.
+	gatewayOrigin := "http://localhost:8080"
+	if v := os.Getenv("GATEWAY_URL"); v != "" {
+		gatewayOrigin = v
+	}
+
+	app.Use(func(c fiber.Ctx) error {
+		c.Set("Access-Control-Allow-Credentials", "true")
+		c.Set("Access-Control-Allow-Origin", gatewayOrigin)
+		c.Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+		c.Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if c.Method() == "OPTIONS" {
+			return c.SendStatus(fiber.StatusNoContent)
+		}
+		return c.Next()
+	})
 
 	routes.RegisterAuthRoutes(
 		app,

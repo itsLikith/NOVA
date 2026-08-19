@@ -19,19 +19,25 @@ func JWTAuth(cfg *config.Config) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		header := c.Get("Authorization")
 
+		var tokenString string
 		if strings.TrimSpace(header) == "" {
-			return fiber.NewError(
-				fiber.StatusUnauthorized,
-				"authentication required",
-			)
-		}
-
-		tokenString, err := utils.ExtractBearerToken(header)
-		if err != nil {
-			return fiber.NewError(
-				fiber.StatusUnauthorized,
-				"invalid authorization header",
-			)
+			// try cookie fallback
+			tokenString = c.Cookies("token")
+			if strings.TrimSpace(tokenString) == "" {
+				return fiber.NewError(
+					fiber.StatusUnauthorized,
+					"authentication required",
+				)
+			}
+		} else {
+			var err error
+			tokenString, err = utils.ExtractBearerToken(header)
+			if err != nil {
+				return fiber.NewError(
+					fiber.StatusUnauthorized,
+					"invalid authorization header",
+				)
+			}
 		}
 
 		claims, err := utils.ParseToken(

@@ -2,9 +2,13 @@ package handlers
 
 import (
 	"errors"
+	"time"
 
+	"github.com/nova/auth/config"
 	"github.com/nova/auth/internal/models"
 	"github.com/nova/auth/internal/services"
+	"github.com/nova/auth/pkg/middleware"
+	"github.com/nova/pkg/logger"
 	"github.com/nova/pkg/response"
 
 	"github.com/gofiber/fiber/v3"
@@ -12,11 +16,13 @@ import (
 
 type AuthHandler struct {
 	service services.AuthService
+	cfg     *config.Config
 }
 
-func NewAuthHandler(service services.AuthService) *AuthHandler {
+func NewAuthHandler(service services.AuthService, cfg *config.Config) *AuthHandler {
 	return &AuthHandler{
 		service: service,
+		cfg:     cfg,
 	}
 }
 
@@ -67,6 +73,22 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 		)
 	}
 
+	// set http-only cookie with the token
+	cookie := &fiber.Cookie{
+		Name:     "token",
+		Value:    result.Token,
+		Path:     "/",
+		HTTPOnly: true,
+		Secure:   h.cfg.AppEnv != "development",
+		SameSite: "Lax",
+		Expires:  time.Now().Add(time.Duration(h.cfg.JWTExpirationHour) * time.Hour),
+	}
+
+	// Log cookie set event (do not log token value)
+	logger.Info("Setting auth cookie for user " + result.User.UserID + " expires " + cookie.Expires.String())
+
+	c.Cookie(cookie)
+
 	return c.Status(fiber.StatusOK).JSON(response.SendSuccessResponse(
 		fiber.StatusOK,
 		"login successful",
@@ -78,6 +100,22 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 				Role:   result.User.Role,
 			},
 		},
+	))
+}
+
+func (h *AuthHandler) Validate(c fiber.Ctx) error {
+	// JWTAuth middleware will populate locals
+	userID, _ := c.Locals(middleware.UserIDKey).(string)
+	role, _ := c.Locals(middleware.RoleKey).(string)
+
+	if userID == "" {
+		return fiber.NewError(fiber.StatusUnauthorized, "invalid token")
+	}
+
+	return c.Status(fiber.StatusOK).JSON(response.SendSuccessResponse(
+		fiber.StatusOK,
+		"token valid",
+		fiber.Map{"user": UserResponse{UserID: userID, Role: role}},
 	))
 }
 

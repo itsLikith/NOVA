@@ -17,6 +17,9 @@ func RegisterAuthRoutes(
 
 	auth.Post("/login", handler.Login)
 
+	// validate endpoint uses JWTAuth and will return user information if the token is valid
+	auth.Get("/validate", middleware.JWTAuth(cfg), handler.Validate)
+
 	admin := auth.Group(
 		"/users",
 		middleware.JWTAuth(cfg),

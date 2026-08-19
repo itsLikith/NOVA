@@ -40,5 +40,18 @@ func (s *AuthService) Forward(c fiber.Ctx) error {
 		)
 	}
 
+	// Log presence of Set-Cookie header for debugging in dev
+	if sc := c.Response().Header.Peek("Set-Cookie"); len(sc) > 0 {
+		logger.Info("Forwarded Set-Cookie from auth upstream: " + string(sc))
+		// Also log request cookies for debugging (if any)
+		if rc := c.Request().Header.Peek("Cookie"); len(rc) > 0 {
+			logger.Info("Request Cookie header present when forwarding auth response")
+		} else {
+			logger.Info("No request Cookie header present when forwarding auth response")
+		}
+	} else {
+		logger.Info("No Set-Cookie header present in upstream response")
+	}
+
 	return nil
 }

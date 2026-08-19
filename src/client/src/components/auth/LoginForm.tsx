@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useState, useEffect } from 'react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,26 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [responseMessage, setResponseMessage] = useState<ResponseMessage | null>(null);
 
+  // On mount, check if user already authenticated (cookie/token). If so, redirect to dashboard.
+  useEffect(() => {
+    let mounted = true
+    const check = async () => {
+      try {
+        const resp = await fetch('/api/v1/auth/validate', { method: 'GET', credentials: 'include' })
+        if (!mounted) return
+        if (resp.ok) {
+          router.replace('/dashboard')
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    check()
+    return () => {
+      mounted = false
+    }
+  }, [router])
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setResponseMessage(null);
@@ -50,6 +70,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
       const response = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ userid: userID, password }),
       });
 
@@ -66,8 +87,39 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
         return;
       }
 
+      // token is still returned in response for backward compatibility; store in localStorage
       localStorage.setItem('nova.auth.token', payload.data.token);
       localStorage.setItem('nova.auth.user', JSON.stringify(payload.data.user));
+
+      // validate the cookie/token via the auth validate endpoint before navigating
+      // try a few times to allow the browser to process Set-Cookie
+      const maxAttempts = 5
+      let validated = false
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          const v = await fetch('/api/v1/auth/validate', {
+            method: 'GET',
+            credentials: 'include',
+          })
+          if (v.ok) {
+            validated = true
+            break
+          }
+        } catch (e) {
+          // ignore and retry
+        }
+        // small delay before retrying
+        await new Promise((r) => setTimeout(r, 200))
+      }
+
+      if (!validated) {
+        setResponseMessage({
+          type: 'error',
+          text: 'Unable to validate session after login. Please try again.',
+        })
+        return
+      }
+
       setResponseMessage({
         type: 'success',
         text: `Welcome back, ${payload.data.user.userid}. Redirecting to your dashboard…`,
