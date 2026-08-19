@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 
 	"github.com/nova/gateway/config"
 	"github.com/nova/gateway/internal/routes"
@@ -26,6 +27,8 @@ func main() {
 			return c.Status(status).JSON(response.SendErrorResponse(status, message, nil))
 		},
 	})
+
+	app.Use(cors.New())
 
 	api := app.Group("/api/v1")
 

@@ -1,5 +1,3 @@
-export default function DashboardPage() {
-    return (
-        <h1>working</h1>
-    )
+export default function Page() {
+  return <div></div>;
 }

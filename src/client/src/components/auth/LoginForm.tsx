@@ -61,7 +61,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
           text:
             payload?.message === 'invalid credentials'
               ? 'That user ID or password is incorrect. Please try again.'
-              : payload?.message ?? 'We could not sign you in. Please try again shortly.',
+              : (payload?.message ?? 'We could not sign you in. Please try again shortly.'),
         });
         return;
       }
